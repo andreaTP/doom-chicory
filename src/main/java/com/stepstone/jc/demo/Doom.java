@@ -1,23 +1,18 @@
 package com.stepstone.jc.demo;
 
 import com.dylibso.chicory.runtime.HostFunction;
-import com.dylibso.chicory.runtime.HostGlobal;
-import com.dylibso.chicory.runtime.HostImports;
-import com.dylibso.chicory.runtime.HostMemory;
-import com.dylibso.chicory.runtime.HostTable;
+import com.dylibso.chicory.runtime.ImportMemory;
+import com.dylibso.chicory.runtime.ImportValues;
 import com.dylibso.chicory.runtime.Instance;
 import com.dylibso.chicory.runtime.Memory;
-import com.dylibso.chicory.runtime.Module;
 import com.dylibso.chicory.runtime.WasmFunctionHandle;
+import com.dylibso.chicory.wasm.Parser;
 import com.dylibso.chicory.wasm.types.MemoryLimits;
-import com.dylibso.chicory.wasm.types.Value;
 import com.dylibso.chicory.wasm.types.ValueType;
 
 import java.awt.EventQueue;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -40,64 +35,64 @@ public class Doom {
         EventQueue.invokeLater(() -> gameWindow.setVisible(true));
 
         // load WASM module
-        var module = Module.builder("doom.wasm").build();
+        var module = Parser.parse(Doom.class.getResourceAsStream("/doom.wasm"));
 
         //        import function js_js_milliseconds_since_start():int;
         //        import function js_js_console_log(a:int, b:int);
         //        import function js_js_draw_screen(a:int);
         //        import function js_js_stdout(a:int, b:int);
         //        import function js_js_stderr(a:int, b:int);
-        var imports = new HostImports(
-                new HostFunction[]{
-                        new HostFunction(
-                                jsMillisecondsSinceStart(),
-                                JS_MODULE_NAME,
-                                "js_milliseconds_since_start",
-                                List.of(),
-                                List.of(ValueType.I32)),
-                        new HostFunction(
-                                jsConsoleLog(),
-                                JS_MODULE_NAME,
-                                "js_console_log",
-                                List.of(ValueType.I32, ValueType.I32),
-                                List.of()),
-                        new HostFunction(
-                                jsStdout(),
-                                JS_MODULE_NAME,
-                                "js_stdout",
-                                List.of(ValueType.I32, ValueType.I32),
-                                List.of()),
-                        new HostFunction(
-                                jsStderr(),
-                                JS_MODULE_NAME,
-                                "js_stderr",
-                                List.of(ValueType.I32, ValueType.I32),
-                                List.of()),
-                        new HostFunction(
-                                jsDrawScreen(),
-                                JS_MODULE_NAME,
-                                "js_draw_screen",
-                                List.of(ValueType.I32),
-                                List.of()),
-                },
-                new HostGlobal[]{},
-                new HostMemory[]{
-                        new HostMemory("env", "memory", new Memory(new MemoryLimits(108, 1000)))
-                },
-                new HostTable[]{}
-        );
-        var instance = module.withHostImports(imports).instantiate();
+        var imports = ImportValues.builder()
+                .addFunction(
+                    new HostFunction[]{
+                            new HostFunction(
+                                    JS_MODULE_NAME,
+                                    "js_milliseconds_since_start",
+                                    List.of(),
+                                    List.of(ValueType.I32),
+                                    jsMillisecondsSinceStart()),
+                            new HostFunction(
+                                    JS_MODULE_NAME,
+                                    "js_console_log",
+                                    List.of(ValueType.I32, ValueType.I32),
+                                    List.of(),
+                                    jsConsoleLog()),
+                            new HostFunction(
+                                    JS_MODULE_NAME,
+                                    "js_stdout",
+                                    List.of(ValueType.I32, ValueType.I32),
+                                    List.of(),
+                                    jsStdout()),
+                            new HostFunction(
+                                    JS_MODULE_NAME,
+                                    "js_stderr",
+                                    List.of(ValueType.I32, ValueType.I32),
+                                    List.of(),
+                                    jsStderr()),
+                            new HostFunction(
+                                    JS_MODULE_NAME,
+                                    "js_draw_screen",
+                                    List.of(ValueType.I32),
+                                    List.of(),
+                                    jsDrawScreen()),
+                    })
+                .addMemory(
+                        new ImportMemory("env", "memory", new Memory(new MemoryLimits(108, 1000)))
+                )
+                .build();
+
+        var instance = Instance.builder(module).withImportValues(imports).build();
 
         var addBrowserEvent = instance.export("add_browser_event");
         var doomLoopStep = instance.export("doom_loop_step");
         var main = instance.export("main");
 
         // run main() with doommy argc,argv pointers to set up some variables
-        main.apply(Value.i32(0), Value.i32(0));
+        main.apply(0, 0);
 
         // schedule main game loop
         scheduledExecutorService.scheduleAtFixedRate(() -> {
-            gameWindow.drainKeyEvents(event -> addBrowserEvent.apply(Value.i32(event[0]), Value.i32(event[1])));
+            gameWindow.drainKeyEvents(event -> addBrowserEvent.apply(event[0], event[1]));
             doomLoopStep.apply();
         }, 0, 10, TimeUnit.MILLISECONDS);
     }
@@ -110,14 +105,14 @@ public class Doom {
      * @return milliseconds from start of game
      */
     private WasmFunctionHandle jsMillisecondsSinceStart() {
-        return (Instance instance, Value ... args) -> {
-            return new Value[] { Value.i32((int) (System.currentTimeMillis() - start)) };
+        return (Instance instance, long ... args) -> {
+            return new long[] { System.currentTimeMillis() - start };
         };
     }
     private WasmFunctionHandle jsConsoleLog() {
-        return (Instance instance, Value ... args) -> {
-            var offset = args[0].asInt();
-            var size = args[1].asInt();
+        return (Instance instance, long ... args) -> {
+            var offset = (int) args[0];
+            var size = (int) args[1];
 
             System.out.println(instance.memory().readString(offset, size));
 
@@ -125,9 +120,9 @@ public class Doom {
         };
     }
     private WasmFunctionHandle jsStdout() {
-        return (Instance instance, Value ... args) -> {
-            var offset = args[0].asInt();
-            var size = args[1].asInt();
+        return (Instance instance, long ... args) -> {
+            var offset = (int) args[0];
+            var size = (int) args[1];
 
             System.out.print(instance.memory().readString(offset, size));
 
@@ -135,9 +130,9 @@ public class Doom {
         };
     }
     private WasmFunctionHandle jsStderr() {
-        return (Instance instance, Value ... args) -> {
-            var offset = args[0].asInt();
-            var size = args[1].asInt();
+        return (Instance instance, long ... args) -> {
+            var offset = (int) args[0];
+            var size = (int) args[1];
 
             System.err.print(instance.memory().readString(offset, size));
 
@@ -151,8 +146,8 @@ public class Doom {
      *
      */
     private WasmFunctionHandle jsDrawScreen() {
-        return (Instance instance, Value ... args) -> {
-            var ptr = args[0].asInt();
+        return (Instance instance, long ... args) -> {
+            var ptr = (int) args[0];
 
             int max = Doom.doomScreenWidth * Doom.doomScreenHeight * 4;
             int[] screenData = new int[max];

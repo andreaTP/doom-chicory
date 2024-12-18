@@ -14,7 +14,7 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <java.version>17</java.version>
-        <chicory.version>0.0.10</chicory.version>
+        <chicory.version>1.0.0-M2</chicory.version>
     </properties>
 
     <dependencies>
