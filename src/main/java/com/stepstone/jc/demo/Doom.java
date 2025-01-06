@@ -4,7 +4,7 @@ import com.dylibso.chicory.runtime.HostFunction;
 import com.dylibso.chicory.runtime.ImportMemory;
 import com.dylibso.chicory.runtime.ImportValues;
 import com.dylibso.chicory.runtime.Instance;
-import com.dylibso.chicory.runtime.Memory;
+import com.dylibso.chicory.runtime.ByteBufferMemory;
 import com.dylibso.chicory.runtime.WasmFunctionHandle;
 import com.dylibso.chicory.wasm.Parser;
 import com.dylibso.chicory.wasm.types.MemoryLimits;
@@ -77,7 +77,7 @@ public class Doom {
                                     jsDrawScreen()),
                     })
                 .addMemory(
-                        new ImportMemory("env", "memory", new Memory(new MemoryLimits(108, 1000)))
+                        new ImportMemory("env", "memory", new ByteBufferMemory(new MemoryLimits(108, 1000)))
                 )
                 .build();
 
