@@ -13,7 +13,6 @@ import com.dylibso.chicory.wasm.types.ValType;
 
 import java.awt.EventQueue;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -28,11 +27,11 @@ public class Doom {
     private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
     private final GameWindow gameWindow = new GameWindow();
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
        new Doom().runGame();
     }
 
-    void runGame() throws IOException {
+    void runGame() {
         EventQueue.invokeLater(() -> gameWindow.setVisible(true));
 
         // load WASM module
