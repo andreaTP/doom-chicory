@@ -7,12 +7,12 @@ import com.dylibso.chicory.runtime.Instance;
 import com.dylibso.chicory.runtime.ByteBufferMemory;
 import com.dylibso.chicory.runtime.WasmFunctionHandle;
 import com.dylibso.chicory.wasm.Parser;
+import com.dylibso.chicory.wasm.types.FunctionType;
 import com.dylibso.chicory.wasm.types.MemoryLimits;
-import com.dylibso.chicory.wasm.types.ValueType;
+import com.dylibso.chicory.wasm.types.ValType;
 
 import java.awt.EventQueue;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,11 +27,11 @@ public class Doom {
     private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
     private final GameWindow gameWindow = new GameWindow();
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
        new Doom().runGame();
     }
 
-    void runGame() throws IOException {
+    void runGame() {
         EventQueue.invokeLater(() -> gameWindow.setVisible(true));
 
         // load WASM module
@@ -48,32 +48,27 @@ public class Doom {
                             new HostFunction(
                                     JS_MODULE_NAME,
                                     "js_milliseconds_since_start",
-                                    List.of(),
-                                    List.of(ValueType.I32),
+                                    FunctionType.of(List.of(), List.of(ValType.I32)),
                                     jsMillisecondsSinceStart()),
                             new HostFunction(
                                     JS_MODULE_NAME,
                                     "js_console_log",
-                                    List.of(ValueType.I32, ValueType.I32),
-                                    List.of(),
+                                    FunctionType.of(List.of(ValType.I32, ValType.I32), List.of()),
                                     jsConsoleLog()),
                             new HostFunction(
                                     JS_MODULE_NAME,
                                     "js_stdout",
-                                    List.of(ValueType.I32, ValueType.I32),
-                                    List.of(),
+                                    FunctionType.of(List.of(ValType.I32, ValType.I32), List.of()),
                                     jsStdout()),
                             new HostFunction(
                                     JS_MODULE_NAME,
                                     "js_stderr",
-                                    List.of(ValueType.I32, ValueType.I32),
-                                    List.of(),
+                                    FunctionType.of(List.of(ValType.I32, ValType.I32), List.of()),
                                     jsStderr()),
                             new HostFunction(
                                     JS_MODULE_NAME,
                                     "js_draw_screen",
-                                    List.of(ValueType.I32),
-                                    List.of(),
+                                    FunctionType.of(List.of(ValType.I32), List.of()),
                                     jsDrawScreen()),
                     })
                 .addMemory(
@@ -105,9 +100,7 @@ public class Doom {
      * @return milliseconds from start of game
      */
     private WasmFunctionHandle jsMillisecondsSinceStart() {
-        return (Instance instance, long ... args) -> {
-            return new long[] { System.currentTimeMillis() - start };
-        };
+        return (Instance instance, long ... args) -> new long[] {System.currentTimeMillis() - start };
     }
     private WasmFunctionHandle jsConsoleLog() {
         return (Instance instance, long ... args) -> {
